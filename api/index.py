@@ -37,10 +37,11 @@ feature_names = ['position_encoded', 'is_starter', 'is_home', 'minutes_played',
                 'match_rating', 'shots_total', 'shots_on', 'shot_conversion',
                 'passes_total', 'passes_accuracy', 'team_position', 'opp_position']
 
+# Ligues principales (ID API-Football)
 LEAGUES = {
     39: {'name': 'Premier League', 'country': 'England'},
     61: {'name': 'Ligue 1', 'country': 'France'},
-    140: {'name': 'La Liga', 'country': 'Spain'},
+    140: {'name': 'La Liga', 'country': 'Spain'},  # ✅ CORRIGÉ (était 71)
     135: {'name': 'Serie A', 'country': 'Italy'},
     78: {'name': 'Bundesliga', 'country': 'Germany'}
 }
