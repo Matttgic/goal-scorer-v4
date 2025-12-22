@@ -14,7 +14,12 @@ CORS(app)
 # ============ CONFIGURATION ============
 API_FOOTBALL_KEY = os.environ.get('API_FOOTBALL_KEY', '')
 API_FOOTBALL_BASE = 'https://v3.football.api-sports.io'
-CURRENT_SEASON = 2025  # ⚠️ Saison 2025-2026
+
+def get_api_football_headers():
+    """Récupérer les headers pour API-Football direct"""
+    return {
+        'x-apisports-key': API_FOOTBALL_KEY
+    }
 
 # ============ CHARGER LES MODÈLES ============
 def load_models():
