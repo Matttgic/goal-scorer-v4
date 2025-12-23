@@ -10,15 +10,12 @@ app = Flask(__name__)
 API_KEY = os.environ.get('API_FOOTBALL_KEY')
 API_BASE = "https://v3.football.api-sports.io"
 
-def get_today_matches():
-    """Matchs AUJOURD'HUI - Top 5 ligues"""
+def get_topscorers(team_id):
+    """Top buteurs équipe"""
     if not API_KEY: return []
     headers = {"x-apisports-key": API_KEY}
-    today = date.today().strftime("%Y-%m-%d")
-    leagues = "39,61,78,135,140"
-    
     response = requests.get(
-        f"{API_BASE}/fixtures?league={leagues}&season=2025&date={today}",
+        f"{API_BASE}/players/topscorers?team={team_id}&season=2025",
         headers=headers
     )
     data = response.json()
@@ -36,18 +33,6 @@ def get_lineups(match_id):
     data = response.json()
     if "errors" in data: return None
     return data.get("response", [{}])[0]
-
-def get_topscorers(team_id):
-    """Top buteurs équipe"""
-    if not API_KEY: return []
-    headers = {"x-apisports-key": API_KEY}
-    response = requests.get(
-        f"{API_BASE}/players/topscorers?team={team_id}&season=2025",
-        headers=headers
-    )
-    data = response.json()
-    if "errors" in data: return []
-    return data.get("response", [])
 
 def is_lineup_time(match_time_str):
     """20-40min avant match = LINEUPS DISPO"""
@@ -93,62 +78,18 @@ def player_features(scorer_data, match, side, is_starter_confirmed=False):
         "time_status": "LINEUPS ✅" if is_starter_confirmed else "Probable starter"
     }
 
-@app.route('/live-real')
-def live_real_v4():
-    """🎯 VRAI V4 : PRÉ-LINEUPS + LINEUPS 30MIN"""
-    try:
-        matches = get_today_matches()
-        if not matches:
-            return json.dumps([{"message": f"Aucun match {date.today().strftime('%Y-%m-%d')}"}])
-        
-        all_predictions = []
-        
-        for match in matches[:8]:
-            match_id = match['fixture']['id']
-            home_team = match['teams']['home']
-            away_team = match['teams']['away']
-            match_time = match['fixture']['date']
-            
-            # LINEUPS DISPO ? (20-40min avant)
-            lineups = get_lineups(match_id) if is_lineup_time(match_time) else None
-            
-            # TOPSCORERS DOMICILE
-            home_scorers = get_topscorers(home_team['id'])
-            for scorer in home_scorers[:3]:
-                is_starter = False
-                if lineups:
-                    starters = [p['player']['id'] for p in lineups.get('team', {}).get('home', {}).get('starting_eleven', [])]
-                    is_starter = scorer['player']['id'] in starters
-                
-                pred = player_features(scorer, match, "Home", is_starter)
-                all_predictions.append(pred)
-            
-            # TOPSCORERS EXTÉRIEUR
-            away_scorers = get_topscorers(away_team['id'])
-            for scorer in away_scorers[:3]:
-                is_starter = False
-                if lineups:
-                    starters = [p['player']['id'] for p in lineups.get('team', {}).get('away', {}).get('starting_eleven', [])]
-                    is_starter = scorer['player']['id'] in starters
-                
-                pred = player_features(scorer, match, "Away", is_starter)
-                all_predictions.append(pred)
-        
-        top_5 = sorted(all_predictions, key=lambda x: x['probability'], reverse=True)[:5]
-        return json.dumps(top_5)
-        
-    except Exception as e:
-        return json.dumps([{"error": str(e)}])
-
 @app.route('/')
 def home():
-    matches = get_today_matches()
     return json.dumps({
         "status": "V4 Live ✅",
         "api_key": "OK" if API_KEY else "MISSING",
-        "matches_today": len(matches),
-        "lineups_system": "20-40min avant",
-        "test": "/debug"
+        "tests": {
+            "today": "/",
+            "debug_dates": "/debug",
+            "weekend": "/test-weekend", 
+            "live_20251222": "/live-20251222",
+            "live_real": "/live-real"
+        }
     })
 
 @app.route('/debug')
@@ -175,33 +116,117 @@ def debug_full():
         "today": today,
         "api_key": bool(API_KEY),
         "date_tests": results,
-        "next_test": "/test-weekend",
-        "live_real": "/live-real"
+        "next_test": "/test-weekend"
     })
 
 @app.route('/test-weekend')
 def test_weekend():
-    """🎯 MATCHS WEEK-END PROCHE"""
+    """🎯 MATCHS RECENTS (2025-12-22 + 12-20)"""
     if not API_KEY: return json.dumps({"error": "NO_KEY"})
     
     headers = {"x-apisports-key": API_KEY}
-    dates = ["2025-12-22", "2025-12-21", "2025-12-20"]
+    dates = ["2025-12-22", "2025-12-20"]  # DATES AVEC MATCHS !
     
     all_matches = []
+    date_results = {}
+    
     for d in dates:
         response = requests.get(
             f"{API_BASE}/fixtures?league=39,61,78,135,140&season=2025&date={d}",
             headers=headers
         )
         data = response.json()
-        if "errors" not in data:
-            all_matches.extend(data.get("response", []))
+        matches = data.get("response", [])
+        date_results[d] = len(matches)
+        all_matches.extend(matches)
     
     return json.dumps({
         "weekend_matches": len(all_matches),
+        "by_date": date_results,
         "sample": [f"{m['teams']['home']['name']} vs {m['teams']['away']['name']}" for m in all_matches[:5]],
         "full_list": len(all_matches) > 0
     })
+
+@app.route('/live-20251222')
+def live_20251222():
+    """🎯 V4 SUR FULHAM vs FOREST (12/22)"""
+    try:
+        if not API_KEY: return json.dumps([{"error": "NO_KEY"}])
+        
+        headers = {"x-apisports-key": API_KEY}
+        response = requests.get(
+            f"{API_BASE}/fixtures?league=39&season=2025&date=2025-12-22",
+            headers=headers
+        )
+        matches = response.json().get("response", [])
+        
+        if not matches:
+            return json.dumps([{"message": "Pas de match 2025-12-22"}])
+        
+        match = matches[0]  # Fulham vs Forest
+        home_team = match['teams']['home']['id']
+        away_team = match['teams']['away']['id']
+        
+        all_predictions = []
+        
+        # TOPSCORERS FULHAM
+        print(f"Fetching Fulham topscorers (team {home_team})")
+        home_scorers = get_topscorers(home_team)
+        for scorer in home_scorers[:3]:
+            pred = player_features(scorer, match, "Home", False)
+            all_predictions.append(pred)
+        
+        # TOPSCORERS FOREST
+        print(f"Fetching Forest topscorers (team {away_team})")
+        away_scorers = get_topscorers(away_team)
+        for scorer in away_scorers[:3]:
+            pred = player_features(scorer, match, "Away", False)
+            all_predictions.append(pred)
+        
+        top_5 = sorted(all_predictions, key=lambda x: x['probability'], reverse=True)[:5]
+        return json.dumps({
+            "match": f"{match['teams']['home']['name']} vs {match['teams']['away']['name']}",
+            "predictions": top_5
+        })
+        
+    except Exception as e:
+        return json.dumps([{"error": str(e)}])
+
+@app.route('/live-real')
+def live_real_v4():
+    """🎯 VRAI V4 : Matchs aujourd'hui → Topscorers → ML"""
+    try:
+        headers = {"x-apisports-key": API_KEY}
+        today = date.today().strftime("%Y-%m-%d")
+        response = requests.get(
+            f"{API_BASE}/fixtures?league=39,61,78,135,140&season=2025&date={today}",
+            headers=headers
+        )
+        matches = response.json().get("response", [])
+        
+        if not matches:
+            return json.dumps([{"message": f"Aucun match {today} - Test /live-20251222"}])
+        
+        all_predictions = []
+        for match in matches[:8]:
+            home_team = match['teams']['home']['id']
+            away_team = match['teams']['away']['id']
+            
+            home_scorers = get_topscorers(home_team)
+            for scorer in home_scorers[:2]:
+                pred = player_features(scorer, match, "Home", False)
+                all_predictions.append(pred)
+            
+            away_scorers = get_topscorers(away_team)
+            for scorer in away_scorers[:2]:
+                pred = player_features(scorer, match, "Away", False)
+                all_predictions.append(pred)
+        
+        top_5 = sorted(all_predictions, key=lambda x: x['probability'], reverse=True)[:5]
+        return json.dumps(top_5)
+        
+    except Exception as e:
+        return json.dumps([{"error": str(e)}])
 
 if __name__ == "__main__":
     app.run(debug=True)
