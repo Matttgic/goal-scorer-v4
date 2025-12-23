@@ -1,5 +1,5 @@
-import json
 from flask import Flask
+import json
 
 app = Flask(__name__)
 
@@ -8,7 +8,7 @@ def home():
     return json.dumps({
         "status": "OK", 
         "model": "V4", 
-        "roc_auc": 0.798, 
+        "roc_auc": 0.798,
         "top_200": "39.5%"
     })
 
