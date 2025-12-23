@@ -1,0 +1,32 @@
+{
+  "model_version": "4.0",
+  "training_date": "2025-12-22T20:30:37.671504",
+  "roc_auc_validation": 0.8092349081881137,
+  "roc_auc_test": 0.7975147791024337,
+  "top_200_precision": 39.5,
+  "dataset_size": 137945,
+  "feature_names": [
+    "position_encoded",
+    "is_starter",
+    "is_home",
+    "minutes_played_avg",
+    "match_rating_avg",
+    "shots_total_avg",
+    "shots_on_avg",
+    "shot_conversion_avg",
+    "passes_total_avg",
+    "passes_accuracy_avg",
+    "team_position",
+    "opp_position",
+    "goals_last_5",
+    "avg_rating_last_5",
+    "form_trend",
+    "team_strength_ratio",
+    "minutes_efficiency",
+    "shots_efficiency",
+    "is_attacking_position",
+    "rating_x_position"
+  ],
+  "train_period": "2022-09-03 00:00:00 to 2024-02-16 00:00:00",
+  "test_period": "2024-02-17 00:00:00 to 2024-06-02 00:00:00"
+}
