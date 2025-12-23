@@ -228,5 +228,26 @@ def live_real_v4():
     except Exception as e:
         return json.dumps([{"error": str(e)}])
 
+@app.route('/why-empty')
+def why_empty():
+    """🔍 POURQUOI TOPSCORERS VIDE ?"""
+    headers = {"x-apisports-key": API_KEY}
+    
+    # FULHAM ID=36 → RAW API RESPONSE
+    resp = requests.get(
+        f"{API_BASE}/players/topscorers?team=36&season=2025",
+        headers=headers
+    )
+    
+    raw = resp.json()
+    
+    return json.dumps({
+        "fulham_topscorers_raw": raw,
+        "response_count": len(raw.get("response", [])),
+        "errors": raw.get("errors", "NONE"),
+        "parameters": raw.get("parameters", {}),
+        "status": "RAW_API"
+    }, indent=2)
+
 if __name__ == "__main__":
     app.run(debug=True)
